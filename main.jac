@@ -382,7 +382,7 @@ def:pub app -> JsxElement {
                             <Text style={styles.routeSafetyNote}>Mock map and directions only. Verify your surroundings and contact local emergency services.</Text>
                         </View>
                     </View>
-                } elif route_open == False and active_tab == "Broadcast" and role == "Embassy" {
+                } elif not route_open and active_tab == "Broadcast" and role == "Embassy" {
                     <View style={styles.broadcastHeader}>
                         <Text style={styles.title}>Broadcast</Text>
                         <Text style={styles.subtitle}>Send a targeted update to workers.</Text>
@@ -439,7 +439,7 @@ def:pub app -> JsxElement {
                     <Pressable style={styles.broadcastSend} onPress={lambda { send_broadcast(); }}>
                         <Text style={styles.broadcastSendLabel}>Send</Text>
                     </Pressable>
-                } elif active_tab == "Triage Dashboard" and role == "Embassy" {
+                } elif not route_open and active_tab == "Triage Dashboard" and role == "Embassy" {
                     <View style={styles.broadcastHeader}>
                         <Text style={styles.title}>Triage Dashboard</Text>
                         <Text style={styles.subtitle}>Review AI-prioritized worker medical alerts.</Text>
@@ -479,8 +479,8 @@ def:pub app -> JsxElement {
                                         <View style={styles.miniRoadOne} />
                                         <View style={styles.miniRoadTwo} />
                                         <View style={styles.miniRouteLine} />
-                                        <View style={styles.workerMapPin}><Text style={styles.workerMapPinLabel}>WORKER</Text></View>
-                                        <Text style={styles.miniMapCaption}>{alert.location + " · " + str(alert.latitude) + ", " + str(alert.longitude)}</Text>
+                                        <View style={styles.workerMapPin}><Text style={styles.workerMapPinLabel}>RED PIN · WORKER</Text></View>
+                                        <Text style={styles.miniMapCaption}>{alert.location + " · Lat " + str(alert.latitude) + " · Lng " + str(alert.longitude)}</Text>
                                     </View>) if expanded_alert_id == jid(alert) else <View/>}
                                 </View>
                                 <Text style={styles.triageDetail}>Incident: {alert.incident_description}</Text>
