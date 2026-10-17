@@ -1,6 +1,6 @@
 import from datetime { datetime }
 import from services.triageModels { MedicalTriageAlert }
-sv import from services.triageService { triage_ai_agent }
+import from services.triageAgent { triage_ai_agent }
 
 node SOSReport {
     has worker_name: str,

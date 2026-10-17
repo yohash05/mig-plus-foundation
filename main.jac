@@ -73,7 +73,7 @@ def:pub app -> JsxElement {
         }
     }
 
-    def load_triage {
+    async def load_triage {
         triage_loading = True;
         triage_error = "";
         try {
@@ -85,7 +85,7 @@ def:pub app -> JsxElement {
         triage_loading = False;
     }
 
-    def mark_done(alert: MedicalTriageAlert) {
+    async def mark_done(alert: MedicalTriageAlert) {
         result = root spawn resolve_triage_alert(alert_id=jid(alert));
         if result.reports and len(result.reports) > 0 {
             load_triage();
