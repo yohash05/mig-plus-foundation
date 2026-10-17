@@ -1,6 +1,6 @@
 import from services.mediAiService { medi_ai_assistant }
 import from services.sosService { SOSReport, sos_medical, sos_threat }
-import from services.triageModels { MedicalTriageAlert }
+sv import from services.triageService { MedicalTriageAlert, load_triage_alerts, resolve_triage_alert }
 import from "react-native" { Vibration }
 
 import from "@jac/mobui" {
@@ -12,30 +12,6 @@ import from "@jac/mobui" {
     useWindowDimensions
 }
 import from .theme { buildStyles }
-
-walker:pub load_triage_alerts {
-    can collect with Root entry {
-        visit [-->[?:MedicalTriageAlert]];
-    }
-
-    can collect_alert with MedicalTriageAlert entry {
-        report here;
-    }
-}
-
-walker:pub resolve_triage_alert {
-    has alert_id: str;
-
-    can resolve with Root entry {
-        alert = jobj(self.alert_id);
-        if isinstance(alert, MedicalTriageAlert) {
-            alert.resolved = True;
-            report {"status": "resolved"};
-        } else {
-            report {"status": "not_found"};
-        }
-    }
-}
 
 glob styles = buildStyles({
     "bg": "#f4f7f6",
@@ -425,11 +401,7 @@ def:pub app -> JsxElement {
                                 <Text style={styles.triageDetail}>Incident: {alert.incident_description}</Text>
                                 <View style={styles.triageSection}><Text style={styles.triageSectionTitle}>AI Summary</Text><Text style={styles.triageDetail}>{alert.ai_summary}</Text></View>
                                 <View style={styles.triageSection}><Text style={styles.triageSectionTitle}>Suggested Action</Text><Text style={styles.triageDetail}>{alert.suggested_action}</Text></View>
-                                if not alert.resolved {
-                                    <Pressable style={styles.resolveButton} onPress={lambda { mark_done(alert); }}><Text style={styles.resolveButtonLabel}>Mark as Done / Resolved</Text></Pressable>
-                                } else {
-                                    <Text style={styles.resolvedLabel}>Resolved</Text>
-                                }
+                                {<Pressable style={styles.resolveButton} onPress={lambda { mark_done(alert); }}><Text style={styles.resolveButtonLabel}>Mark as Done / Resolved</Text></Pressable> if not alert.resolved else <Text style={styles.resolvedLabel}>Resolved</Text>}
                             </View>
                         }
                     }
