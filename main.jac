@@ -1,6 +1,5 @@
 import from services.mediAiService { medi_ai_assistant }
 
-import from datetime { datetime }
 import from "react-native" { Vibration }
 
 import from "@jac/mobui" {
@@ -39,7 +38,7 @@ walker:pub sos_medical {
 
     can record with Root entry {
         _ = root ++> SOSReport(worker_name=self.worker_name, location=self.location, category="Medical Emergency");
-        received_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S");
+        received_at = "just now";
         report {"status": "sent", "worker_name": self.worker_name, "location": self.location, "category": "Medical Emergency", "time_received": received_at, "incident_description": self.incident_description, "triage": "pending"};
     }
 }
@@ -254,6 +253,7 @@ def:pub app -> JsxElement {
     }
 
     def elapsed_label(timestamp: str) -> str {
+        if timestamp.startswith("just now") { return "just now"; }
         return "Received " + timestamp;
     }
 

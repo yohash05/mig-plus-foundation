@@ -1,8 +1,7 @@
 import from jaclang.byllm.lib { Model }
 import from services.triageModels { MedicalTriageAlert }
 
-glob GEMINI_API_KEY: str = "[INSERT_YOUR_GEMINI_API_KEY_HERE]";
-glob triage_model: Model = Model(model_name="gemini/gemini-2.0-flash", api_key=GEMINI_API_KEY);
+glob triage_model: Model = Model(model_name="gemini/gemini-2.0-flash");
 
 obj TriageAssessment {
     has Priority: str,
