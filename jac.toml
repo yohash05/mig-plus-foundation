@@ -14,7 +14,7 @@ base_route_app = "app"
 [byllm]
 [byllm.model]
 default_model = "${LLM_MODEL:-gpt-4o-mini}"
-api_key = "${OPENAI_API_KEY:-}"
+api_key = "${GEMINI_API_KEY:-}"
 
 
 [dependencies]
