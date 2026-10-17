@@ -230,12 +230,12 @@ def:pub app -> JsxElement {
             result = root spawn medi_ai_assistant(message=clean, location="Al Barsha, Dubai, United Arab Emirates");
             if result.reports and len(result.reports) > 0 {
                 response_text = result.reports[0] as str;
-                medi_messages = medi_messages + [{"sender": "Medi AI", "text": response_text, "mine": False}];
+                medi_messages = medi_messages + [{"sender": "Mig AI", "text": response_text, "mine": False}];
             } else {
                 medi_error = "No response was returned. Please try again.";
             }
         } except Exception {
-            medi_error = "Medi AI could not connect. Check your network and Gemini key, then try again.";
+            medi_error = "Mig AI could not connect. Check your network and Gemini key, then try again.";
         }
         medi_loading = False;
     }
@@ -276,7 +276,7 @@ def:pub app -> JsxElement {
         }
     }
 
-    worker_tabs: list[str] = ["Home", "Community", "Medi AI"];
+    worker_tabs: list[str] = ["Home", "Community", "Mig AI"];
     embassy_tabs: list[str] = ["Home", "Triage Dashboard", "Broadcast"];
     tabs = worker_tabs if role == "Worker" else embassy_tabs;
     return <View style={[styles.screen, {height: viewport.height}]}>
@@ -526,10 +526,10 @@ def:pub app -> JsxElement {
                             </View>
                         }
                     }
-                } elif active_tab == "Medi AI" and role == "Worker" {
+                } elif active_tab == "Mig AI" and role == "Worker" {
                     <View style={styles.mediHeader}>
-                        <Text style={styles.title}>Medi AI</Text>
-                        <Text style={styles.subtitle}>Health guidance for workers, with your location included.</Text>
+                        <Text style={styles.title}>Mig AI</Text>
+                        <Text style={styles.subtitle}>Ask questions, get help communicating, or seek general health guidance.</Text>
                     </View>
                     <View style={styles.locationBanner}>
                         <Text style={styles.locationLabel}>CURRENT LOCATION</Text>
@@ -539,8 +539,8 @@ def:pub app -> JsxElement {
                     <View style={styles.mediMessages}>
                         {if len(medi_messages) == 0 {
                             <View style={styles.mediIntroBubble}>
-                                <Text style={styles.senderLabel}>Medi AI</Text>
-                                <Text style={styles.messageText}>Tell me what you are experiencing. I can offer general guidance, but I cannot replace a doctor.</Text>
+                                <Text style={styles.senderLabel}>Mig AI</Text>
+                                <Text style={styles.messageText}>Hi, I’m Mig AI. Ask me a general question, get help writing or understanding a message, or describe a health concern. For emergencies, contact local emergency services.</Text>
                             </View>
                         }}
                         {for (idx, message) in enumerate(medi_messages) {
@@ -552,7 +552,7 @@ def:pub app -> JsxElement {
                             </View>
                         }}
                         {if medi_loading {
-                            <View style={styles.mediIntroBubble}><Text style={styles.placeholderText}>Medi AI is preparing a response...</Text></View>
+                            <View style={styles.mediIntroBubble}><Text style={styles.placeholderText}>Mig AI is preparing a response...</Text></View>
                         }}
                         {if medi_error != "" {
                             <View style={styles.mediErrorBox}>
@@ -635,12 +635,12 @@ def:pub app -> JsxElement {
                     </View>
                 </View>
             }}
-            {if active_tab == "Medi AI" and role == "Worker" and not route_open {
+            {if active_tab == "Mig AI" and role == "Worker" and not route_open {
                 <View style={styles.composer}>
                     <TextInput
                         style={styles.messageInput}
                         value={medi_draft}
-                        placeholder="Describe your symptoms..."
+                        placeholder="Ask Mig AI anything..."
                         placeholderTextColor="#71847f"
                         multiline={True}
                         onChangeText={lambda (text: str) { medi_draft = text; }}
