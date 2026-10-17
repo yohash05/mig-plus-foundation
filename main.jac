@@ -1,3 +1,4 @@
+import from services.mediAiService { medi_ai_assistant }
 import from "@jac/mobui" {
     View,
     Text,
@@ -24,6 +25,10 @@ def:pub app -> JsxElement {
         active_tab: str = "Home",
         active_chat: str = "",
         draft_message: str = "",
+        medi_draft: str = "",
+        medi_messages: list[dict] = [],
+        medi_loading: bool = False,
+        medi_error: str = "",
         chat_messages: list[dict] = [],
         broadcast_audience: str = "Individual Worker",
         broadcast_kind: str = "Normal",
@@ -61,6 +66,29 @@ def:pub app -> JsxElement {
             ];
         }
         draft_message = "";
+    }
+
+    async def send_medi_message {
+        clean = medi_draft.strip();
+        if not clean or medi_loading {
+            return;
+        }
+        medi_messages = medi_messages + [{"sender": "You", "text": clean, "mine": True}];
+        medi_draft = "";
+        medi_error = "";
+        medi_loading = True;
+        try {
+            result = root spawn medi_ai_assistant(message=clean, location="Al Barsha, Dubai, United Arab Emirates");
+            if result.reports and len(result.reports) > 0 {
+                response_text = result.reports[0] as str;
+                medi_messages = medi_messages + [{"sender": "Medi AI", "text": response_text, "mine": False}];
+            } else {
+                medi_error = "No response was returned. Please try again.";
+            }
+        } except Exception {
+            medi_error = "Medi AI could not connect. Check your network and Gemini key, then try again.";
+        }
+        medi_loading = False;
     }
 
     def send_message {
@@ -227,6 +255,44 @@ def:pub app -> JsxElement {
                             </View>
                         }
                     }
+                } elif active_tab == "Medi AI" and role == "Worker" {
+                    <View style={styles.mediHeader}>
+                        <Text style={styles.title}>Medi AI</Text>
+                        <Text style={styles.subtitle}>Health guidance for workers, with your location included.</Text>
+                    </View>
+                    <View style={styles.locationBanner}>
+                        <Text style={styles.locationLabel}>CURRENT LOCATION</Text>
+                        <Text style={styles.locationText}>Al Barsha, Dubai, United Arab Emirates</Text>
+                        <Text style={styles.locationNote}>Mock location for this preview. Shared with your question to suggest nearby care.</Text>
+                    </View>
+                    <View style={styles.mediMessages}>
+                        {if len(medi_messages) == 0 {
+                            <View style={styles.mediIntroBubble}>
+                                <Text style={styles.senderLabel}>Medi AI</Text>
+                                <Text style={styles.messageText}>Tell me what you are experiencing. I can offer general guidance, but I cannot replace a doctor.</Text>
+                            </View>
+                        }}
+                        {for (idx, message) in enumerate(medi_messages) {
+                            <View key={str(idx)} style={styles.messageRow if not (message["mine"] as bool) else styles.messageRowMine}>
+                                <View style={styles.messageBubble if not (message["mine"] as bool) else styles.messageBubbleMine}>
+                                    <Text style={styles.senderLabel if not (message["mine"] as bool) else styles.senderLabelMine}>{message["sender"] as str}</Text>
+                                    <Text style={styles.messageText}>{message["text"] as str}</Text>
+                                </View>
+                            </View>
+                        }}
+                        {if medi_loading {
+                            <View style={styles.mediIntroBubble}><Text style={styles.placeholderText}>Medi AI is preparing a response...</Text></View>
+                        }}
+                        {if medi_error != "" {
+                            <View style={styles.mediErrorBox}>
+                                <Text style={styles.mediErrorText}>{medi_error}</Text>
+                                <Pressable style={styles.retryButton} onPress={lambda { send_medi_message(); }}>
+                                    <Text style={styles.retryLabel}>Retry</Text>
+                                </Pressable>
+                            </View>
+                        }}
+                        <Text style={styles.medicalDisclaimer}>General information only. For emergencies, contact local emergency services.</Text>
+                    </View>
                 } elif active_tab == "Community" and role == "Worker" {
                     if active_chat == "" {
                         <View style={styles.communityIntro}>
@@ -280,7 +346,22 @@ def:pub app -> JsxElement {
                     </View>
                 }}
             </ScrollView>
-            {if active_chat != "" {
+            {if active_tab == "Medi AI" and role == "Worker" {
+                <View style={styles.composer}>
+                    <TextInput
+                        style={styles.messageInput}
+                        value={medi_draft}
+                        placeholder="Describe your symptoms..."
+                        placeholderTextColor="#71847f"
+                        multiline={True}
+                        onChangeText={lambda (text: str) { medi_draft = text; }}
+                        onSubmitEditing={lambda { send_medi_message(); }}
+                    />
+                    <Pressable style={styles.sendButton if not medi_loading else styles.disabledSendButton} onPress={lambda { send_medi_message(); }}>
+                        <Text style={styles.sendLabel}>Send</Text>
+                    </Pressable>
+                </View>
+            } elif active_chat != "" {
                 <View style={styles.composer}>
                     <TextInput
                         style={styles.messageInput}
