@@ -1,116 +1,102 @@
-"""Design tokens and the stylesheet factory.
-
-React Native has no CSS, no Tailwind and no className -- styling is plain
-objects of camelCase properties built with StyleSheet.create. Keeping the tokens
-here and the sheet in a factory means the whole app re-skins from one place.
-
-There is deliberately no JSX in this file. E1105 (the no-HTML guard) is enforced
-on main.jac and .native.jac files but NOT on plain modules like this one, so a
-stray <div> here would compile clean and then break on a real device. Keep
-rendering in main.jac.
-"""
-
 import from "@jac/mobui" { StyleSheet }
 
-
-glob:pub DARK: dict = {
-         "bg": "#0b0d12",
-         "surface": "#151922",
-         "border": "#232937",
-         "text": "#e6e9ef",
-         "muted": "#8a93a6",
-         "accent": "#7c5cff",
-         "accentText": "#ffffff"
-     },
-     S: dict = {"xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 24},
-     R: dict = {"sm": 8, "md": 12, "lg": 16, "pill": 999},
-     F: dict = {"sm": 13, "md": 15, "lg": 18, "xl": 28};
+glob DARK: dict = {
+    "bg": "#f4f7f6",
+    "surface": "#ffffff",
+    "border": "#e2e9e6",
+    "text": "#17332d",
+    "muted": "#71847f",
+    "accent": "#087f68",
+    "accentText": "#ffffff"
+};
 
 
-"""Build the stylesheet for a palette. Call once at module load, not per render.
-
-Returns `any`, not `dict`: StyleSheet.create hands back a sheet whose entries are
-read as attributes (`styles.card`). Annotating it `dict` turns every one of those
-reads into `error[E1030]: Type "dict" has no attribute "card"`.
-"""
 def:pub buildStyles(C: dict) -> any {
-    return StyleSheet.create(
-        {
-            "screen": {"flex": 1, "backgroundColor": C["bg"]},
-            "content": {"padding": S["xl"], "gap": S["lg"]},
-            # The top 44px is the status bar on a phone and the notch in the preview frame.
-            "screenContent": {
-                "paddingTop": 56,
-                "paddingBottom": S["xl"],
-                "paddingHorizontal": S["xl"],
-                "gap": S["lg"]
-            },
-            "title": {
-                "fontSize": F["xl"],
-                "fontWeight": "bold",
-                "color": C["text"]
-            },
-            "subtitle": {"fontSize": F["sm"], "color": C["muted"]},
-            # flexDirection defaults to "column" in RN -- rows must say so.
-            "row": {
-                "flexDirection": "row",
-                "alignItems": "center",
-                "gap": S["sm"]
-            },
-            "input": {
-                "flex": 1,
-                "padding": S["md"],
-                "borderRadius": R["md"],
-                "borderWidth": 1,
-                "borderColor": C["border"],
-                "backgroundColor": C["surface"],
-                "color": C["text"]
-            },
-            "addButton": {
-                "paddingVertical": S["md"],
-                "paddingHorizontal": S["lg"],
-                "borderRadius": R["md"],
-                "backgroundColor": C["accent"],
-                "alignItems": "center"
-            },
-            "addLabel": {"color": C["accentText"], "fontWeight": "bold"},
-            "card": {
-                "padding": S["lg"],
-                "borderRadius": R["md"],
-                "borderWidth": 1,
-                "borderColor": C["border"],
-                "backgroundColor": C["surface"]
-            },
-            "noteText": {"fontSize": F["md"], "color": C["text"], "flex": 1},
-            "noteDone": {
-                "fontSize": F["md"],
-                "color": C["muted"],
-                "flex": 1,
-                "textDecorationLine": "line-through"
-            },
-            "check": {
-                "width": 22,
-                "height": 22,
-                "borderRadius": R["pill"],
-                "borderWidth": 1,
-                "borderColor": C["accent"],
-                "alignItems": "center",
-                "justifyContent": "center"
-            },
-            "checkOn": {
-                "width": 22,
-                "height": 22,
-                "borderRadius": R["pill"],
-                "backgroundColor": C["accent"],
-                "alignItems": "center",
-                "justifyContent": "center"
-            },
-            "checkMark": {"color": C["accentText"], "fontSize": F["sm"]},
-            "empty": {
-                "padding": S["xl"],
-                "alignItems": "center",
-                "gap": S["sm"]
-            }
-        }
-    );
+    return StyleSheet.create({
+        "screen": {"flex": 1, "backgroundColor": C["bg"]},
+        "screenContent": {
+            "flexGrow": 1,
+            "justifyContent": "center",
+            "paddingTop": 64,
+            "paddingBottom": 36,
+            "paddingHorizontal": 26,
+            "gap": 28
+        },
+        "brandMark": {
+            "width": 44,
+            "height": 44,
+            "borderRadius": 15,
+            "backgroundColor": C["accent"],
+            "alignItems": "center",
+            "justifyContent": "center"
+        },
+        "brandPlus": {"color": C["accent"], "fontSize": 27, "fontWeight": "bold"},
+        "hero": {"gap": 8},
+        "title": {"fontSize": 31, "fontWeight": "bold", "color": C["text"]},
+        "subtitle": {"fontSize": 15, "lineHeight": 23, "color": C["muted"]},
+        "loginPanel": {
+            "padding": 22,
+            "gap": 14,
+            "borderRadius": 22,
+            "borderWidth": 1,
+            "borderColor": C["border"],
+            "backgroundColor": C["surface"]
+        },
+        "panelTitle": {"fontSize": 18, "fontWeight": "bold", "color": C["text"]},
+        "primaryButton": {
+            "marginTop": 8,
+            "paddingVertical": 16,
+            "borderRadius": 13,
+            "backgroundColor": C["accent"],
+            "alignItems": "center"
+        },
+        "buttonLabel": {"fontSize": 15, "fontWeight": "bold", "color": C["accentText"]},
+        "secondaryButton": {
+            "paddingVertical": 16,
+            "borderRadius": 13,
+            "borderWidth": 1,
+            "borderColor": C["border"],
+            "backgroundColor": C["surface"],
+            "alignItems": "center"
+        },
+        "secondaryLabel": {"fontSize": 15, "fontWeight": "bold", "color": C["text"]},
+        "footer": {"fontSize": 13, "color": C["muted"], "textAlign": "center"},
+        "appFrame": {"flex": 1},
+        "pageBody": {"flex": 1},
+        "pageContent": {"paddingTop": 58, "paddingBottom": 28, "paddingHorizontal": 22, "gap": 24},
+        "topBar": {"flexDirection": "row", "alignItems": "center", "justifyContent": "space-between"},
+        "brandName": {"fontSize": 22, "fontWeight": "bold", "color": C["text"]},
+        "roleLabel": {"fontSize": 12, "color": C["muted"]},
+        "switchButton": {"paddingVertical": 9, "paddingHorizontal": 12, "borderRadius": 10, "borderWidth": 1, "borderColor": C["border"]},
+        "switchLabel": {"fontSize": 12, "fontWeight": "bold", "color": C["accent"]},
+        "pageHeading": {"gap": 5, "paddingTop": 12},
+        "placeholderCard": {
+            "padding": 22,
+            "gap": 12,
+            "borderRadius": 20,
+            "borderWidth": 1,
+            "borderColor": C["border"],
+            "backgroundColor": C["surface"]
+        },
+        "cardAccent": {"width": 34, "height": 4, "borderRadius": 4, "backgroundColor": C["accent"]},
+        "placeholderText": {"fontSize": 15, "lineHeight": 23, "color": C["muted"]},
+        "infoCard": {"padding": 18, "gap": 7, "borderRadius": 16, "backgroundColor": "#e8f2ef"},
+        "infoTitle": {"fontSize": 14, "fontWeight": "bold", "color": C["text"]},
+        "bottomBar": {
+            "flexDirection": "row",
+            "justifyContent": "space-around",
+            "alignItems": "center",
+            "paddingTop": 10,
+            "paddingBottom": 22,
+            "paddingHorizontal": 8,
+            "borderTopWidth": 1,
+            "borderTopColor": C["border"],
+            "backgroundColor": C["surface"]
+        },
+        "tabButton": {"flex": 1, "alignItems": "center", "justifyContent": "center", "gap": 6, "paddingVertical": 4},
+        "tabIndicator": {"width": 22, "height": 3, "borderRadius": 3, "backgroundColor": C["accent"]},
+        "tabIndicatorOff": {"width": 22, "height": 3, "borderRadius": 3, "backgroundColor": "transparent"},
+        "tabLabel": {"fontSize": 11, "color": C["muted"], "textAlign": "center"},
+        "tabLabelActive": {"fontSize": 11, "fontWeight": "bold", "color": C["accent"], "textAlign": "center"}
+    });
 }
