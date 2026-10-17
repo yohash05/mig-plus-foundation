@@ -1,5 +1,5 @@
 import from services.mediAiService { medi_ai_assistant }
-import from services.sosService { SOSReport, sos_medical, sos_threat, record_medical_sos, record_threat_sos }
+import from services.sosService { SOSReport }
 import from "react-native" { Vibration }
 import from "@jac/mobui" {
     View,
@@ -10,6 +10,26 @@ import from "@jac/mobui" {
     useWindowDimensions
 }
 import from .theme { buildStyles }
+
+walker:pub sos_medical {
+    has worker_name: str,
+        location: str;
+
+    can record with Root entry {
+        _ = root ++> SOSReport(worker_name=self.worker_name, location=self.location, category="Medical Emergency");
+        report {"status": "sent", "worker_name": self.worker_name, "location": self.location, "category": "Medical Emergency"};
+    }
+}
+
+walker:pub sos_threat {
+    has worker_name: str,
+        location: str;
+
+    can record with Root entry {
+        _ = root ++> SOSReport(worker_name=self.worker_name, location=self.location, category="Threat / Disaster");
+        report {"status": "sent", "worker_name": self.worker_name, "location": self.location, "category": "Threat / Disaster"};
+    }
+}
 
 glob styles = buildStyles({
     "bg": "#f4f7f6",
