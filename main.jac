@@ -24,7 +24,16 @@ def:pub app -> JsxElement {
         active_tab: str = "Home",
         active_chat: str = "",
         draft_message: str = "",
-        chat_messages: list[dict] = [];
+        chat_messages: list[dict] = [],
+        broadcast_audience: str = "Individual Worker",
+        broadcast_kind: str = "Normal",
+        broadcast_text: str = "",
+        worker_id_text: str = "",
+        selected_region: str = "Gulf Region",
+        broadcast_notice: str = "",
+        inbox_messages: list[dict] = [],
+        pending_alert: str = "",
+        alert_visible: bool = False;
 
     viewport = useWindowDimensions();
 
@@ -62,10 +71,28 @@ def:pub app -> JsxElement {
         }
     }
 
+    def send_broadcast {
+        clean = broadcast_text.strip();
+        if clean {
+            emergency = broadcast_kind == "Emergency Alert";
+            audience = broadcast_audience;
+            if audience == "Group of Workers" {
+                audience = selected_region;
+            }
+            recipient_count = len([worker_id.strip() for worker_id in worker_id_text.split(",") if worker_id.strip()]) if broadcast_audience == "Group of Workers" else 1;
+            inbox_messages = inbox_messages + [{"sender": "Embassy", "text": clean, "emergency": emergency, "audience": audience, "recipient_count": recipient_count}];
+            if emergency {
+                pending_alert = clean;
+                alert_visible = True;
+            }
+            broadcast_notice = "Message sent to " + audience + (" as an emergency alert." if emergency else ".");
+            broadcast_text = "";
+        }
+    }
+
     worker_tabs: list[str] = ["Home", "Community", "Medi AI"];
     embassy_tabs: list[str] = ["Home", "Triage Dashboard", "Broadcast"];
     tabs = worker_tabs if role == "Worker" else embassy_tabs;
-
     return <View style={[styles.screen, {height: viewport.height}]}>
         {(
             <ScrollView style={styles.screen} contentContainerStyle={styles.screenContent}>
@@ -89,17 +116,118 @@ def:pub app -> JsxElement {
                 <Text style={styles.footer}>A connected support network, wherever you are.</Text>
             </ScrollView>
         ) if role == "" else <View style={styles.appFrame}>
-            <ScrollView style={styles.pageBody} contentContainerStyle={styles.pageContent}>
+            {if role == "Worker" and alert_visible and pending_alert != "" {
+                <View style={styles.alertModalOverlay}>
+                    <View style={styles.alertModalCard}>
+                        <View style={styles.alertModalIcon}><Text style={styles.alertIconText}>!</Text></View>
+                        <Text style={styles.alertTitle}>Emergency Alert</Text>
+                        <Text style={styles.alertBody}>{pending_alert}</Text>
+                        <Pressable style={styles.alertDismiss} onPress={lambda { alert_visible = False; }}>
+                            <Text style={styles.alertDismissText}>Acknowledge</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            }}
+            <ScrollView style={styles.pageBody} contentContainerStyle={[styles.pageContent, (styles.pageContentBroadcast if role == "Embassy" and active_tab == "Broadcast" else styles.pageContent)]}>
+                {if role == "Worker" and alert_visible and pending_alert != "" {
+                    <View style={styles.alertModalOverlay}>
+                        <View style={styles.alertModalCard}>
+                            <View style={styles.alertModalIcon}><Text style={styles.alertIconText}>!</Text></View>
+                            <Text style={styles.alertTitle}>Emergency Alert</Text>
+                            <Text style={styles.alertBody}>{pending_alert}</Text>
+                            <Pressable style={styles.alertDismiss} onPress={lambda { alert_visible = False; }}>
+                                <Text style={styles.alertDismissText}>Acknowledge</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                }}
                 <View style={styles.topBar}>
                     <View>
                         <Text style={styles.brandName}>Mig<Text style={styles.brandPlus}>+</Text></Text>
                         <Text style={styles.roleLabel}>{role} workspace</Text>
                     </View>
-                    <Pressable style={styles.switchButton} onPress={lambda { role = ""; }}>
-                        <Text style={styles.switchLabel}>Switch role</Text>
-                    </Pressable>
+                    <View style={styles.topActions}>
+                        {if role == "Worker" and len(inbox_messages) > 0 and pending_alert == "" {
+                            <Pressable style={styles.inboxButton} onPress={lambda { active_tab = "Home"; }}>
+                                <Text style={styles.inboxButtonLabel}>Inbox</Text>
+                            </Pressable>
+                        }}
+                        <Pressable style={styles.switchButton} onPress={lambda { role = ""; }}>
+                            <Text style={styles.switchLabel}>Switch role</Text>
+                        </Pressable>
+                    </View>
                 </View>
-                {if active_tab == "Community" and role == "Worker" {
+                {if active_tab == "Broadcast" and role == "Embassy" {
+                    <View style={styles.broadcastHeader}>
+                        <Text style={styles.title}>Broadcast</Text>
+                        <Text style={styles.subtitle}>Send a targeted update to workers.</Text>
+                    </View>
+                    if broadcast_notice != "" {
+                        <View style={styles.successBanner}>
+                            <Text style={styles.successTitle}>Message sent</Text>
+                            <Text style={styles.successText}>{broadcast_notice}</Text>
+                        </View>
+                    }
+                    <Text style={styles.formLabel}>Choose recipients</Text>
+                    <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} style={styles.audienceScroller}>
+                        {for audience in ["Individual Worker", "Group of Workers", "All Workers"] {
+                            <Pressable key={audience} style={styles.audienceTab if broadcast_audience == audience else styles.audienceTabOff} onPress={lambda { broadcast_audience = audience; broadcast_notice = ""; }}>
+                                <Text style={styles.audienceLabel if broadcast_audience == audience else styles.audienceLabelOff}>{audience}</Text>
+                            </Pressable>
+                        }}
+                    </ScrollView>
+                    if broadcast_audience == "Individual Worker" {
+                        <View style={styles.formBlock}>
+                            <Text style={styles.formLabel}>Worker ID</Text>
+                            <TextInput style={styles.formInput} value={worker_id_text} placeholder="Enter worker ID" placeholderTextColor="#71847f" onChangeText={lambda (text: str) { worker_id_text = text; }} />
+                        </View>
+                    }
+                    if broadcast_audience == "Group of Workers" {
+                        <View style={styles.formBlock}>
+                            <Text style={styles.formLabel}>Select by Region</Text>
+                            <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} style={styles.regionScroller}>
+                                {for region in ["Gulf Region", "Europe", "East Asia", "North America"] {
+                                    <Pressable key={region} style={styles.regionChip if selected_region == region else styles.regionChipOff} onPress={lambda { selected_region = region; }}>
+                                        <Text style={styles.regionLabel if selected_region == region else styles.regionLabelOff}>{region}</Text>
+                                    </Pressable>
+                                }}
+                            </ScrollView>
+                            <Text style={styles.formLabel}>Select Multiple Worker IDs</Text>
+                            <TextInput style={styles.formInput} value={worker_id_text} placeholder="Enter IDs separated by commas" placeholderTextColor="#71847f" onChangeText={lambda (text: str) { worker_id_text = text; }} />
+                        </View>
+                    }
+                    <View style={styles.formBlock}>
+                        <Text style={styles.formLabel}>Message Type</Text>
+                        <View style={styles.typeToggle}>
+                            <Pressable style={styles.typeOption if broadcast_kind == "Normal" else styles.typeOptionOff} onPress={lambda { broadcast_kind = "Normal"; }}>
+                                <Text style={styles.typeLabel if broadcast_kind == "Normal" else styles.typeLabelOff}>Send as Normal Message</Text>
+                            </Pressable>
+                            <Pressable style={styles.emergencyOption if broadcast_kind == "Emergency Alert" else styles.typeOptionOff} onPress={lambda { broadcast_kind = "Emergency Alert"; }}>
+                                <Text style={styles.emergencyLabel if broadcast_kind == "Emergency Alert" else styles.typeLabelOff}>Send as Emergency Alert</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                    <View style={styles.formBlock}>
+                        <Text style={styles.formLabel}>Message</Text>
+                        <TextInput style={styles.broadcastTextInput} value={broadcast_text} placeholder="Write a message for workers" placeholderTextColor="#71847f" multiline={True} onChangeText={lambda (text: str) { broadcast_text = text; }} />
+                    </View>
+                    <Pressable style={styles.broadcastSend} onPress={lambda { send_broadcast(); }}>
+                        <Text style={styles.broadcastSendLabel}>Send</Text>
+                    </Pressable>
+                } elif active_tab == "Home" and role == "Worker" and len(inbox_messages) > 0 {
+                    <View style={styles.pageHeading}>
+                        <Text style={styles.title}>Home</Text>
+                        <Text style={styles.subtitle}>Your worker inbox and support updates.</Text>
+                    </View>
+                    for (idx, inbox_item) in enumerate(inbox_messages) {
+                        if not (inbox_item["emergency"] as bool) {
+                            <View key={str(idx)} style={styles.inboxCard}>
+                                <Text style={styles.inboxSender}>{inbox_item["sender"] as str}</Text>
+                                <Text style={styles.placeholderText}>{inbox_item["text"] as str}</Text>
+                            </View>
+                        }
+                    }
+                } elif active_tab == "Community" and role == "Worker" {
                     if active_chat == "" {
                         <View style={styles.communityIntro}>
                             <Text style={styles.title}>Community</Text>
