@@ -1,6 +1,8 @@
 import from services.mediAiService { medi_ai_assistant }
-import from services.sosService { SOSReport }
+import from services.sosService { SOSReport, sos_medical, sos_threat }
+import from services.triageModels { MedicalTriageAlert }
 import from "react-native" { Vibration }
+
 import from "@jac/mobui" {
     View,
     Text,
@@ -11,23 +13,27 @@ import from "@jac/mobui" {
 }
 import from .theme { buildStyles }
 
-walker:pub sos_medical {
-    has worker_name: str,
-        location: str;
+walker:pub load_triage_alerts {
+    can collect with Root entry {
+        visit [-->[?:MedicalTriageAlert]];
+    }
 
-    can record with Root entry {
-        _ = root ++> SOSReport(worker_name=self.worker_name, location=self.location, category="Medical Emergency");
-        report {"status": "sent", "worker_name": self.worker_name, "location": self.location, "category": "Medical Emergency"};
+    can collect_alert with MedicalTriageAlert entry {
+        report here;
     }
 }
 
-walker:pub sos_threat {
-    has worker_name: str,
-        location: str;
+walker:pub resolve_triage_alert {
+    has alert_id: str;
 
-    can record with Root entry {
-        _ = root ++> SOSReport(worker_name=self.worker_name, location=self.location, category="Threat / Disaster");
-        report {"status": "sent", "worker_name": self.worker_name, "location": self.location, "category": "Threat / Disaster"};
+    can resolve with Root entry {
+        alert = jobj(self.alert_id);
+        if isinstance(alert, MedicalTriageAlert) {
+            alert.resolved = True;
+            report {"status": "resolved"};
+        } else {
+            report {"status": "not_found"};
+        }
     }
 }
 
@@ -67,7 +73,11 @@ def:pub app -> JsxElement {
         sos_busy: bool = False,
         sos_modal_kind: str = "",
         route_open: bool = False,
-        route_step: int = 0;
+        route_step: int = 0,
+        triage_alerts: list[MedicalTriageAlert] = [],
+        triage_view: str = "Active Alerts",
+        triage_loading: bool = False,
+        triage_error: str = "";
 
     viewport = useWindowDimensions();
 
@@ -81,6 +91,29 @@ def:pub app -> JsxElement {
         active_chat = "";
         route_open = False;
         sos_confirmation = "";
+        if selected == "Triage Dashboard" and role == "Embassy" {
+            triage_view = "Active Alerts";
+            load_triage();
+        }
+    }
+
+    def load_triage {
+        triage_loading = True;
+        triage_error = "";
+        try {
+            result = root spawn load_triage_alerts();
+            triage_alerts = result.reports as list[MedicalTriageAlert];
+        } except Exception {
+            triage_error = "Unable to load triage alerts. Pull to retry later.";
+        }
+        triage_loading = False;
+    }
+
+    def mark_done(alert: MedicalTriageAlert) {
+        result = root spawn resolve_triage_alert(alert_id=jid(alert));
+        if result.reports and len(result.reports) > 0 {
+            load_triage();
+        }
     }
 
     def navigate_back {
@@ -128,7 +161,7 @@ def:pub app -> JsxElement {
         Vibration.vibrate(1200);
         location = "Al Barsha, Dubai, United Arab Emirates (25.1124, 55.2007)";
         try {
-            result = root spawn sos_medical(worker_name=worker_name, location=location) if kind == "medical" else root spawn sos_threat(worker_name=worker_name, location=location);
+            result = root spawn sos_medical(worker_name=worker_name, location=location, incident_description="Medical emergency SOS activated by the worker; detailed symptoms pending.") if kind == "medical" else root spawn sos_threat(worker_name=worker_name, location=location);
             if result.reports and len(result.reports) > 0 {
                 sos_banner = "Medical SOS Dispatched to Nearest Hospital & Responders" if kind == "medical" else "Threat SOS Sent to Embassy, Police & Network";
                 sos_modal_kind = kind;
@@ -170,6 +203,14 @@ def:pub app -> JsxElement {
             chat_messages = chat_messages + [{"sender": "You", "text": clean, "mine": True}];
             draft_message = "";
         }
+    }
+
+    def priority_rank(alert: MedicalTriageAlert) -> int {
+        return 0 if alert.priority == "RED" else 1 if alert.priority == "ORANGE" else 2;
+    }
+
+    def elapsed_label(timestamp: str) -> str {
+        return "Received " + timestamp;
     }
 
     def send_broadcast {
@@ -350,6 +391,48 @@ def:pub app -> JsxElement {
                     <Pressable style={styles.broadcastSend} onPress={lambda { send_broadcast(); }}>
                         <Text style={styles.broadcastSendLabel}>Send</Text>
                     </Pressable>
+                } elif active_tab == "Triage Dashboard" and role == "Embassy" {
+                    <View style={styles.broadcastHeader}>
+                        <Text style={styles.title}>Triage Dashboard</Text>
+                        <Text style={styles.subtitle}>Review AI-prioritized worker medical alerts.</Text>
+                    </View>
+                    <View style={styles.triageTabs}>
+                        {for view_name in ["Active Alerts", "Resolved"] {
+                            <Pressable key={view_name} style={styles.triageTab if triage_view == view_name else styles.triageTabOff} onPress={lambda { triage_view = view_name; load_triage(); }}>
+                                <Text style={styles.triageTabLabel if triage_view == view_name else styles.triageTabLabelOff}>{view_name}</Text>
+                            </Pressable>
+                        }}
+                    </View>
+                    if triage_loading {
+                        <View style={styles.triageEmpty}><Text style={styles.subtitle}>Loading triage alerts...</Text></View>
+                    } elif triage_error != "" {
+                        <View style={styles.triageEmpty}><Text style={styles.triageError}>{triage_error}</Text><Pressable style={styles.retryButton} onPress={lambda { load_triage(); }}><Text style={styles.retryLabel}>Retry</Text></Pressable></View>
+                    } else {
+                        visible_alerts = [a for a in triage_alerts if (a.resolved and triage_view == "Resolved") or (not a.resolved and triage_view == "Active Alerts")];
+                        visible_alerts = sorted(visible_alerts, key=priority_rank);
+                        if len(visible_alerts) == 0 {
+                            <View style={styles.triageEmpty}><Text style={styles.triageEmptyTitle}>{"No active alerts" if triage_view == "Active Alerts" else "No resolved alerts yet"}</Text><Text style={styles.subtitle}>Medical triage alerts will appear here when received.</Text></View>
+                        }
+                        for alert in visible_alerts {
+                            <View key={jid(alert)} style={styles.triageCard if not alert.resolved else styles.triageCardResolved}>
+                                <View style={styles.triageCardHeader}>
+                                    <View><Text style={styles.triageWorker}>{alert.worker_name}</Text><Text style={styles.triageTime}>{elapsed_label(alert.time_received)} · {alert.time_received}</Text></View>
+                                    <View style={styles.priorityBadgeRed if alert.priority == "RED" else styles.priorityBadgeOrange if alert.priority == "ORANGE" else styles.priorityBadgeYellow}>
+                                        <Text style={styles.priorityBadgeText}>{alert.priority}</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.triageDetail}>Location: {alert.location}</Text>
+                                <Text style={styles.triageDetail}>Incident: {alert.incident_description}</Text>
+                                <View style={styles.triageSection}><Text style={styles.triageSectionTitle}>AI Summary</Text><Text style={styles.triageDetail}>{alert.ai_summary}</Text></View>
+                                <View style={styles.triageSection}><Text style={styles.triageSectionTitle}>Suggested Action</Text><Text style={styles.triageDetail}>{alert.suggested_action}</Text></View>
+                                if not alert.resolved {
+                                    <Pressable style={styles.resolveButton} onPress={lambda { mark_done(alert); }}><Text style={styles.resolveButtonLabel}>Mark as Done / Resolved</Text></Pressable>
+                                } else {
+                                    <Text style={styles.resolvedLabel}>Resolved</Text>
+                                }
+                            </View>
+                        }
+                    }
                 } elif active_tab == "Home" and role == "Worker" {
                     <View style={styles.workerWelcome}>
                         <Text style={styles.pageTitle}>Emergency Support</Text>
