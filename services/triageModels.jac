@@ -6,6 +6,8 @@ node MedicalTriageAlert {
         priority: str,
         ai_summary: str,
         suggested_action: str,
+        latitude: float = 25.2048,
+        longitude: float = 55.2708,
         resolved: bool = False;
 }
 

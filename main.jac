@@ -1,6 +1,6 @@
 import from services.mediAiService { medi_ai_assistant }
-import from services.sosService { SOSReport, sos_medical, sos_threat }
-import from services.triageModels { MedicalTriageAlert }
+
+import from datetime { datetime }
 import from "react-native" { Vibration }
 
 import from "@jac/mobui" {
@@ -12,6 +12,47 @@ import from "@jac/mobui" {
     useWindowDimensions
 }
 import from .theme { buildStyles }
+
+node SOSReport {
+    has worker_name: str,
+        location: str,
+        category: str;
+}
+
+node MedicalTriageAlert {
+    has worker_name: str,
+        time_received: str,
+        location: str,
+        incident_description: str,
+        priority: str,
+        ai_summary: str,
+        suggested_action: str,
+        latitude: float = 25.2048,
+        longitude: float = 55.2708,
+        resolved: bool = False;
+}
+
+walker:pub sos_medical {
+    has worker_name: str,
+        location: str,
+        incident_description: str = "Medical emergency SOS activated; detailed symptoms pending.";
+
+    can record with Root entry {
+        _ = root ++> SOSReport(worker_name=self.worker_name, location=self.location, category="Medical Emergency");
+        received_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S");
+        report {"status": "sent", "worker_name": self.worker_name, "location": self.location, "category": "Medical Emergency", "time_received": received_at, "incident_description": self.incident_description, "triage": "pending"};
+    }
+}
+
+walker:pub sos_threat {
+    has worker_name: str,
+        location: str;
+
+    can record with Root entry {
+        _ = root ++> SOSReport(worker_name=self.worker_name, location=self.location, category="Threat / Disaster");
+        report {"status": "sent", "worker_name": self.worker_name, "location": self.location, "category": "Threat / Disaster"};
+    }
+}
 
 walker:pub load_triage_alerts {
     can collect with Root entry {
@@ -72,6 +113,8 @@ def:pub app -> JsxElement {
         sos_modal_kind: str = "",
         route_open: bool = False,
         route_step: int = 0,
+        route_kind: str = "medical",
+        expanded_alert_id: str = "",
         triage_alerts: list[MedicalTriageAlert] = [],
         triage_view: str = "Active Alerts",
         triage_loading: bool = False,
@@ -157,12 +200,15 @@ def:pub app -> JsxElement {
         route_open = False;
         sos_busy = True;
         Vibration.vibrate(1200);
-        location = "Al Barsha, Dubai, United Arab Emirates (25.1124, 55.2007)";
+        location = "Industrial Area 4 (Lat: 25.2048, Lng: 55.2708)";
         try {
             result = root spawn sos_medical(worker_name=worker_name, location=location, incident_description="Medical emergency SOS activated by the worker; detailed symptoms pending.") if kind == "medical" else root spawn sos_threat(worker_name=worker_name, location=location);
             if result.reports and len(result.reports) > 0 {
                 sos_banner = "Medical SOS Dispatched to Nearest Hospital & Responders" if kind == "medical" else "Threat SOS Sent to Embassy, Police & Network";
                 sos_modal_kind = kind;
+                route_kind = kind;
+                route_open = True;
+                route_step = 0;
             } else {
                 sos_banner = "SOS could not be confirmed. Please try again or contact local emergency services.";
             }
@@ -306,25 +352,29 @@ def:pub app -> JsxElement {
                 </View>
                 {if route_open {
                     <View style={styles.routeScreen}>
+                        <View style={styles.routeScreenHeader}><Text style={styles.title}>Map / Navigation</Text><Text style={styles.subtitle}>In-app emergency route guidance</Text></View>
                         <View style={styles.routeMap}>
                             <View style={styles.mapRoadOne} />
                             <View style={styles.mapRoadTwo} />
                             <View style={styles.mapRoadThree} />
                             <View style={styles.mapStartPin}><Text style={styles.mapStartText}>YOU</Text></View>
-                            <View style={styles.mapDestinationPin}><Text style={styles.mapDestinationText}>{"HOSPITAL" if sos_modal_kind == "medical" else "SAFE ZONE"}</Text></View>
+                            <View style={styles.mapDestinationPin}><Text style={styles.mapDestinationText}>{"HOSPITAL" if route_kind == "medical" else "SAFE HOUSE"}</Text></View>
                             <View style={styles.routeLineOne} />
                             <View style={styles.routeLineTwo} />
                             <View style={styles.mapLegend}>
-                                <Text style={styles.mapLegendTitle}>{"Route to Al-Amal Medical Center" if sos_modal_kind == "medical" else "Evacuation Route to Red Cross Shelter"}</Text>
-                                <Text style={styles.mapLegendText}>Simulated map route · GPS 25.1124, 55.2007</Text>
+                                <Text style={styles.mapLegendTitle}>{"Route to Al-Amal Medical Center" if route_kind == "medical" else "Evacuation Route to Embassy Safe House - Zone B"}</Text>
+                                <Text style={styles.mapLegendText}>{"Origin: 25.2048, 55.2708 · Destination: 25.2162, 55.2594 · in-app route preview" if route_kind == "medical" else "Origin: 25.2048, 55.2708 · Safe House: 25.2110, 55.2650 · in-app route preview"}</Text>
                             </View>
                         </View>
                         <View style={styles.routeCard}>
-                            <Text style={styles.routeLiveLabel}>LIVE ROUTE GUIDANCE · SIMULATED</Text>
-                            <Text style={styles.routeDestination}>{"Al-Amal Medical Center · 1.4 km" if sos_modal_kind == "medical" else "Red Cross Shelter Area · 2.1 km"}</Text>
+                            <Text style={styles.routeLiveLabel}>IN-APP NAVIGATION · MOCK ROUTE</Text>
+                            <Text style={styles.routeDestination}>{"Al-Amal Medical Center · 1.4 km · 4 mins" if route_kind == "medical" else "Embassy Safe House - Zone B · 0.8 km · 2 mins"}</Text>
+                            <View style={styles.routeOverlayCard}>
+                                <Text style={styles.routeOverlayText}>{"🚑 Navigating to Nearest Hospital (1.4 km - 4 mins)" if route_kind == "medical" else "🛡️ Navigating to Nearest Safe House (0.8 km - 2 mins). Keep your phone hidden if necessary."}</Text>
+                            </View>
                             <View style={styles.routeStepCard}>
                                 <Text style={styles.routeStepNumber}>{str(route_step + 1)}</Text>
-                                <Text style={styles.routeStepText}>{"Head north on Al Barsha Road, then follow the marked route to the medical center." if sos_modal_kind == "medical" else "Move northwest along the marked safe corridor, away from the incident area." if route_step == 0 else "Continue along the protected corridor and follow the signs to the shelter hub."}</Text>
+                                <Text style={styles.routeStepText}>{"Head north on Al Barsha Road, then follow the marked route to Al-Amal Medical Center." if route_kind == "medical" else "Move northwest along the marked safe corridor toward Embassy Safe House - Zone B." if route_step == 0 else "Continue along the safer route and follow the signs to Embassy Safe House - Zone B."}</Text>
                             </View>
                             <Pressable style={styles.routeNextButton} onPress={lambda { route_step = route_step + 1; }}>
                                 <Text style={styles.routeNextLabel}>Next direction</Text>
@@ -419,7 +469,20 @@ def:pub app -> JsxElement {
                                         <Text style={styles.priorityBadgeText}>{alert.priority}</Text>
                                     </View>
                                 </View>
-                                <Text style={styles.triageDetail}>Location: {alert.location}</Text>
+                                <View style={styles.locationIntegrationCard}>
+                                    <Text style={styles.triageSectionTitle}>Worker Location</Text>
+                                    <Text style={styles.triageDetail}>📍 Worker Location: {alert.location} (Lat: {str(alert.latitude)}, Lng: {str(alert.longitude)})</Text>
+                                    <Pressable style={styles.viewMapButton} onPress={lambda { expanded_alert_id = jid(alert) if expanded_alert_id != jid(alert) else ""; }}>
+                                        <Text style={styles.viewMapLabel}>{"Hide Map" if expanded_alert_id == jid(alert) else "View on Map"}</Text>
+                                    </Pressable>
+                                    {(<View style={styles.miniMap}>
+                                        <View style={styles.miniRoadOne} />
+                                        <View style={styles.miniRoadTwo} />
+                                        <View style={styles.miniRouteLine} />
+                                        <View style={styles.workerMapPin}><Text style={styles.workerMapPinLabel}>WORKER</Text></View>
+                                        <Text style={styles.miniMapCaption}>{alert.location + " · " + str(alert.latitude) + ", " + str(alert.longitude)}</Text>
+                                    </View>) if expanded_alert_id == jid(alert) else <View/>}
+                                </View>
                                 <Text style={styles.triageDetail}>Incident: {alert.incident_description}</Text>
                                 <View style={styles.triageSection}><Text style={styles.triageSectionTitle}>AI Summary</Text><Text style={styles.triageDetail}>{alert.ai_summary}</Text></View>
                                 <View style={styles.triageSection}><Text style={styles.triageSectionTitle}>Suggested Action</Text><Text style={styles.triageDetail}>{alert.suggested_action}</Text></View>
@@ -439,8 +502,8 @@ def:pub app -> JsxElement {
                     }
                     <View style={styles.sosLocationCard}>
                         <Text style={styles.sosLocationLabel}>YOUR CURRENT LOCATION</Text>
-                        <Text style={styles.sosLocationText}>Al Barsha, Dubai</Text>
-                        <Text style={styles.sosLocationDetail}>Mock GPS: 25.1124, 55.2007</Text>
+                        <Text style={styles.sosLocationText}>Industrial Area 4</Text>
+                        <Text style={styles.sosLocationDetail}>Mock GPS: Lat 25.2048, Lng 55.2708</Text>
                     </View>
                     <Pressable style={styles.medicalSosButton} onPress={lambda { activate_sos("medical"); }}>
                         <View style={styles.medicalIcon}><Text style={styles.medicalIconText}>+</Text></View>
