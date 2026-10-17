@@ -1,6 +1,6 @@
 import from services.mediAiService { medi_ai_assistant }
 import from services.sosService { SOSReport, sos_medical, sos_threat }
-sv import from services.triageService { MedicalTriageAlert, load_triage_alerts, resolve_triage_alert }
+import from services.triageModels { MedicalTriageAlert }
 import from "react-native" { Vibration }
 
 import from "@jac/mobui" {
@@ -12,6 +12,28 @@ import from "@jac/mobui" {
     useWindowDimensions
 }
 import from .theme { buildStyles }
+
+walker:pub load_triage_alerts {
+    can collect with Root entry {
+        visit [-->[?:MedicalTriageAlert]];
+    }
+    can collect_alert with MedicalTriageAlert entry {
+        report here;
+    }
+}
+
+walker:pub resolve_triage_alert {
+    has alert_id: str;
+    can resolve with Root entry {
+        alert = jobj(self.alert_id);
+        if isinstance(alert, MedicalTriageAlert) {
+            alert.resolved = True;
+            report {"status": "resolved"};
+        } else {
+            report {"status": "not_found"};
+        }
+    }
+}
 
 glob styles = buildStyles({
     "bg": "#f4f7f6",
