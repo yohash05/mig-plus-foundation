@@ -1,4 +1,6 @@
 import from services.mediAiService { medi_ai_assistant }
+import from services.sosService { SOSReport, sos_medical, sos_threat, record_medical_sos, record_threat_sos }
+import from "react-native" { Vibration }
 import from "@jac/mobui" {
     View,
     Text,
@@ -38,7 +40,11 @@ def:pub app -> JsxElement {
         broadcast_notice: str = "",
         inbox_messages: list[dict] = [],
         pending_alert: str = "",
-        alert_visible: bool = False;
+        alert_visible: bool = False,
+        worker_name: str = "Amina Rahman",
+        sos_confirmation: str = "",
+        sos_banner: str = "",
+        sos_busy: bool = False;
 
     viewport = useWindowDimensions();
 
@@ -66,6 +72,32 @@ def:pub app -> JsxElement {
             ];
         }
         draft_message = "";
+    }
+
+    async def activate_sos(kind: str) {
+        if sos_busy {
+            return;
+        }
+        if sos_confirmation != kind {
+            sos_confirmation = kind;
+            sos_banner = "";
+            return;
+        }
+        sos_confirmation = "";
+        sos_busy = True;
+        Vibration.vibrate(1200);
+        location = "Al Barsha, Dubai, United Arab Emirates (25.1124, 55.2007)";
+        try {
+            response = await record_medical_sos(worker_name, location) if kind == "medical" else await record_threat_sos(worker_name, location);
+            if response["status"] == "sent" {
+                sos_banner = "Medical SOS sent to nearby Hospitals & Co-workers" if kind == "medical" else "Threat Alert sent to Embassy, Police, and Worker Community Chat";
+            } else {
+                sos_banner = "SOS could not be confirmed. Please try again or contact local emergency services.";
+            }
+        } except Exception {
+            sos_banner = "SOS could not be sent. Please contact local emergency services directly.";
+        }
+        sos_busy = False;
     }
 
     async def send_medi_message {
@@ -242,11 +274,34 @@ def:pub app -> JsxElement {
                     <Pressable style={styles.broadcastSend} onPress={lambda { send_broadcast(); }}>
                         <Text style={styles.broadcastSendLabel}>Send</Text>
                     </Pressable>
-                } elif active_tab == "Home" and role == "Worker" and len(inbox_messages) > 0 {
-                    <View style={styles.pageHeading}>
-                        <Text style={styles.title}>Home</Text>
-                        <Text style={styles.subtitle}>Your worker inbox and support updates.</Text>
+                } elif active_tab == "Home" and role == "Worker" {
+                    <View style={styles.workerWelcome}>
+                        <Text style={styles.pageTitle}>Emergency Support</Text>
+                        <Text style={styles.workerWelcomeText}>Welcome, {worker_name}</Text>
                     </View>
+                    if sos_banner != "" {
+                        <View style={styles.sosSuccessBanner}>
+                            <Text style={styles.sosSuccessText}>{sos_banner}</Text>
+                        </View>
+                    }
+                    <View style={styles.sosLocationCard}>
+                        <Text style={styles.sosLocationLabel}>YOUR CURRENT LOCATION</Text>
+                        <Text style={styles.sosLocationText}>Al Barsha, Dubai</Text>
+                        <Text style={styles.sosLocationDetail}>Mock GPS: 25.1124, 55.2007</Text>
+                    </View>
+                    <Pressable style={styles.medicalSosButton} onPress={lambda { activate_sos("medical"); }}>
+                        <View style={styles.medicalIcon}><Text style={styles.medicalIconText}>+</Text></View>
+                        <Text style={styles.sosButtonTitle}>Medical Emergency</Text>
+                        <Text style={styles.sosButtonHint}>{"Tap twice to alert hospitals and co-workers" if sos_confirmation != "medical" else "Tap again now to confirm medical SOS"}</Text>
+                    </Pressable>
+                    <Pressable style={styles.threatSosButton} onPress={lambda { activate_sos("threat"); }}>
+                        <View style={styles.threatIcon}><Text style={styles.threatIconText}>!</Text></View>
+                        <Text style={styles.sosButtonTitleLight}>Threat / Disaster</Text>
+                        <Text style={styles.sosButtonHintLight}>{"Tap twice to alert Embassy and Police" if sos_confirmation != "threat" else "Tap again now to confirm threat alert"}</Text>
+                    </Pressable>
+                    if sos_busy {
+                        <Text style={styles.sosBusyText}>Sending your emergency alert...</Text>
+                    }
                     for (idx, inbox_item) in enumerate(inbox_messages) {
                         if not (inbox_item["emergency"] as bool) {
                             <View key={str(idx)} style={styles.inboxCard}>

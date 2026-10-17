@@ -176,6 +176,26 @@ def:pub buildStyles(C: dict) -> any {
         "alertDismiss": {"paddingVertical": 13, "borderRadius": 12, "alignItems": "center", "backgroundColor": "#c52232"},
         "alertDismissText": {"fontSize": 14, "fontWeight": "bold", "color": "#ffffff"},
         "inboxCard": {"padding": 16, "gap": 7, "borderRadius": 15, "borderWidth": 1, "borderColor": C["border"], "backgroundColor": C["surface"]},
-        "inboxSender": {"fontSize": 13, "fontWeight": "bold", "color": C["accent"]}
+        "inboxSender": {"fontSize": 13, "fontWeight": "bold", "color": C["accent"]},
+        "workerWelcome": {"gap": 3, "paddingTop": 4},
+        "pageTitle": {"fontSize": 27, "fontWeight": "bold", "color": C["text"]},
+        "workerWelcomeText": {"fontSize": 13, "color": C["muted"]},
+        "sosLocationCard": {"padding": 13, "gap": 4, "borderRadius": 15, "borderWidth": 1, "borderColor": C["border"], "backgroundColor": C["surface"]},
+        "sosLocationLabel": {"fontSize": 10, "fontWeight": "bold", "color": C["accent"]},
+        "sosLocationText": {"fontSize": 14, "fontWeight": "bold", "color": C["text"]},
+        "sosLocationDetail": {"fontSize": 12, "color": C["muted"]},
+        "medicalSosButton": {"minHeight": 145, "padding": 21, "gap": 10, "borderRadius": 22, "backgroundColor": "#1769aa", "justifyContent": "center"},
+        "medicalIcon": {"width": 46, "height": 46, "borderRadius": 15, "backgroundColor": "#ffffff", "alignItems": "center", "justifyContent": "center"},
+        "medicalIconText": {"fontSize": 36, "fontWeight": "bold", "color": "#1769aa"},
+        "threatSosButton": {"minHeight": 145, "padding": 21, "gap": 10, "borderRadius": 22, "backgroundColor": "#c62836", "justifyContent": "center"},
+        "threatIcon": {"width": 46, "height": 46, "borderRadius": 15, "backgroundColor": "#ffffff", "alignItems": "center", "justifyContent": "center"},
+        "threatIconText": {"fontSize": 28, "fontWeight": "bold", "color": "#c62836"},
+        "sosButtonTitle": {"fontSize": 23, "fontWeight": "bold", "color": "#ffffff"},
+        "sosButtonTitleLight": {"fontSize": 23, "fontWeight": "bold", "color": "#ffffff"},
+        "sosButtonHint": {"fontSize": 13, "lineHeight": 18, "color": "#e3f1ff"},
+        "sosButtonHintLight": {"fontSize": 13, "lineHeight": 18, "color": "#ffe6e8"},
+        "sosSuccessBanner": {"padding": 17, "borderRadius": 15, "borderWidth": 2, "borderColor": "#a7d6b8", "backgroundColor": "#e6f6ec"},
+        "sosSuccessText": {"fontSize": 15, "lineHeight": 22, "fontWeight": "bold", "color": "#175d35"},
+        "sosBusyText": {"fontSize": 13, "fontWeight": "bold", "color": C["accent"], "textAlign": "center"}
     });
 }
