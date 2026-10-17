@@ -44,7 +44,10 @@ def:pub app -> JsxElement {
         worker_name: str = "Amina Rahman",
         sos_confirmation: str = "",
         sos_banner: str = "",
-        sos_busy: bool = False;
+        sos_busy: bool = False,
+        sos_modal_kind: str = "",
+        route_open: bool = False,
+        route_step: int = 0;
 
     viewport = useWindowDimensions();
 
@@ -56,6 +59,21 @@ def:pub app -> JsxElement {
     def select_tab(selected: str) {
         active_tab = selected;
         active_chat = "";
+        route_open = False;
+        sos_confirmation = "";
+    }
+
+    def navigate_back {
+        if route_open {
+            route_open = False;
+            route_step = 0;
+        } elif sos_modal_kind != "" {
+            sos_modal_kind = "";
+        } elif active_chat != "" {
+            active_chat = "";
+        } else {
+            active_tab = "Home";
+        }
     }
 
     def open_chat(kind: str) {
@@ -84,13 +102,16 @@ def:pub app -> JsxElement {
             return;
         }
         sos_confirmation = "";
+        sos_modal_kind = "";
+        route_open = False;
         sos_busy = True;
         Vibration.vibrate(1200);
         location = "Al Barsha, Dubai, United Arab Emirates (25.1124, 55.2007)";
         try {
-            response = await record_medical_sos(worker_name, location) if kind == "medical" else await record_threat_sos(worker_name, location);
-            if response["status"] == "sent" {
-                sos_banner = "Medical SOS sent to nearby Hospitals & Co-workers" if kind == "medical" else "Threat Alert sent to Embassy, Police, and Worker Community Chat";
+            result = root spawn sos_medical(worker_name=worker_name, location=location) if kind == "medical" else root spawn sos_threat(worker_name=worker_name, location=location);
+            if result.reports and len(result.reports) > 0 {
+                sos_banner = "Medical SOS Dispatched to Nearest Hospital & Responders" if kind == "medical" else "Threat SOS Sent to Embassy, Police & Network";
+                sos_modal_kind = kind;
             } else {
                 sos_banner = "SOS could not be confirmed. Please try again or contact local emergency services.";
             }
@@ -202,9 +223,16 @@ def:pub app -> JsxElement {
                     </View>
                 }}
                 <View style={styles.topBar}>
-                    <View>
-                        <Text style={styles.brandName}>Mig<Text style={styles.brandPlus}>+</Text></Text>
-                        <Text style={styles.roleLabel}>{role} workspace</Text>
+                    <View style={styles.brandGroup}>
+                        {if active_tab != "Home" or active_chat != "" or sos_modal_kind != "" or route_open {
+                            <Pressable style={styles.headerBackButton} onPress={lambda { navigate_back(); }}>
+                                <Text style={styles.headerBackGlyph}>&lt;</Text>
+                            </Pressable>
+                        }}
+                        <View>
+                            <Text style={styles.brandName}>Mig<Text style={styles.brandPlus}>+</Text></Text>
+                            <Text style={styles.roleLabel}>{role} workspace</Text>
+                        </View>
                     </View>
                     <View style={styles.topActions}>
                         {if role == "Worker" and len(inbox_messages) > 0 and pending_alert == "" {
@@ -217,7 +245,35 @@ def:pub app -> JsxElement {
                         </Pressable>
                     </View>
                 </View>
-                {if active_tab == "Broadcast" and role == "Embassy" {
+                {if route_open {
+                    <View style={styles.routeScreen}>
+                        <View style={styles.routeMap}>
+                            <View style={styles.mapRoadOne} />
+                            <View style={styles.mapRoadTwo} />
+                            <View style={styles.mapRoadThree} />
+                            <View style={styles.mapStartPin}><Text style={styles.mapStartText}>YOU</Text></View>
+                            <View style={styles.mapDestinationPin}><Text style={styles.mapDestinationText}>{"HOSPITAL" if sos_modal_kind == "medical" else "SAFE ZONE"}</Text></View>
+                            <View style={styles.routeLineOne} />
+                            <View style={styles.routeLineTwo} />
+                            <View style={styles.mapLegend}>
+                                <Text style={styles.mapLegendTitle}>{"Route to Al-Amal Medical Center" if sos_modal_kind == "medical" else "Evacuation Route to Red Cross Shelter"}</Text>
+                                <Text style={styles.mapLegendText}>Simulated map route · GPS 25.1124, 55.2007</Text>
+                            </View>
+                        </View>
+                        <View style={styles.routeCard}>
+                            <Text style={styles.routeLiveLabel}>LIVE ROUTE GUIDANCE · SIMULATED</Text>
+                            <Text style={styles.routeDestination}>{"Al-Amal Medical Center · 1.4 km" if sos_modal_kind == "medical" else "Red Cross Shelter Area · 2.1 km"}</Text>
+                            <View style={styles.routeStepCard}>
+                                <Text style={styles.routeStepNumber}>{str(route_step + 1)}</Text>
+                                <Text style={styles.routeStepText}>{"Head north on Al Barsha Road, then follow the marked route to the medical center." if sos_modal_kind == "medical" else "Move northwest along the marked safe corridor, away from the incident area." if route_step == 0 else "Continue along the protected corridor and follow the signs to the shelter hub."}</Text>
+                            </View>
+                            <Pressable style={styles.routeNextButton} onPress={lambda { route_step = route_step + 1; }}>
+                                <Text style={styles.routeNextLabel}>Next direction</Text>
+                            </Pressable>
+                            <Text style={styles.routeSafetyNote}>Mock map and directions only. Verify your surroundings and contact local emergency services.</Text>
+                        </View>
+                    </View>
+                } elif route_open == False and active_tab == "Broadcast" and role == "Embassy" {
                     <View style={styles.broadcastHeader}>
                         <Text style={styles.title}>Broadcast</Text>
                         <Text style={styles.subtitle}>Send a targeted update to workers.</Text>
@@ -401,7 +457,25 @@ def:pub app -> JsxElement {
                     </View>
                 }}
             </ScrollView>
-            {if active_tab == "Medi AI" and role == "Worker" {
+            {if sos_modal_kind != "" and not route_open {
+                <View style={styles.sosModalOverlay}>
+                    <View style={styles.sosModalCard if sos_modal_kind == "medical" else styles.evacModalCard}>
+                        <Text style={styles.sosModalEyebrow}>{"EMERGENCY ACTION" if sos_modal_kind == "medical" else "IMMEDIATE EVACUATION"}</Text>
+                        <Text style={styles.sosModalTitle}>{sos_banner}</Text>
+                        <View style={styles.sosDestinationCard}>
+                            <Text style={styles.sosDestinationText}>{"Nearest Hospital Found: Al-Amal Medical Center (1.4 km away)" if sos_modal_kind == "medical" else "Nearest Safe Zone/Shelter Hub: Red Cross Shelter Area (2.1 km away)"}</Text>
+                        </View>
+                        <Text style={styles.sosLocationDetail}>Mock GPS: 25.1124, 55.2007</Text>
+                        <Pressable style={styles.navigateHospitalButton if sos_modal_kind == "medical" else styles.navigateShelterButton} onPress={lambda { route_open = True; route_step = 0; }}>
+                            <Text style={styles.navigateButtonLabel}>{"Navigate to Hospital" if sos_modal_kind == "medical" else "Escape Route / Navigate"}</Text>
+                        </Pressable>
+                        <Pressable style={styles.sosCloseButton} onPress={lambda { sos_modal_kind = ""; }}>
+                            <Text style={styles.sosCloseLabel}>Close</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            }}
+            {if active_tab == "Medi AI" and role == "Worker" and not route_open {
                 <View style={styles.composer}>
                     <TextInput
                         style={styles.messageInput}
@@ -416,7 +490,7 @@ def:pub app -> JsxElement {
                         <Text style={styles.sendLabel}>Send</Text>
                     </Pressable>
                 </View>
-            } elif active_chat != "" {
+            } elif active_chat != "" and not route_open {
                 <View style={styles.composer}>
                     <TextInput
                         style={styles.messageInput}
